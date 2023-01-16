@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import csv
+import warnings
+warnings.filterwarnings('ignore')
 
 #  数据预处理
 with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv",'rt') as csvfile:
@@ -17,13 +19,13 @@ print(len(close_price))
 temp = np.array(close_price[1:len(close_price)])
 Mm = MinMaxScaler()
 close_price_normal = Mm.fit_transform(temp.reshape(-1, 1))
+print(type(close_price_normal))
 
 #  绘图
 plt.plot(np.arange(len(close_price_normal)), close_price_normal)
 plt.show()
 
 # tips：记得设置全局变量 IImfs=[]
-elec_all_day_test = []
 IImfs = []
 def ceemdan_decompose(data):
     ceemdan = CEEMDAN()
@@ -59,8 +61,9 @@ def ceemdan_decompose_res(data):
         IImfs.append(imfs[i])
     plt.subplot(imfs.shape[0]+3, 1, imfs.shape[0]+3)
     plt.plot(res,'g')
+    plt.show()
     return res
 
 # ceemdan分解
-res=ceemdan_decompose_res(np.array(elec_all_day_test).ravel())
+res=ceemdan_decompose_res(close_price_normal.ravel())
 
