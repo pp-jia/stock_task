@@ -18,23 +18,34 @@ warnings.filterwarnings('ignore')
 with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt') as csvfile:
     reader = csv.reader(csvfile)
     close_price = [row[1] for row in reader]
+with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt') as csvfile:
+    reader = csv.reader(csvfile)
     open_price = [row[2] for row in reader]
+with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt') as csvfile:
+    reader = csv.reader(csvfile)
     high_price = [row[3] for row in reader]
+with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt') as csvfile:
+    reader = csv.reader(csvfile)
     low_price = [row[4] for row in reader]
+with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt') as csvfile:
+    reader = csv.reader(csvfile)
     volume = [row[5] for row in reader]
+with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt') as csvfile:
+    reader = csv.reader(csvfile)
     chg = [row[7] for row in reader]
-# open_price = np.array([open_price[1:len(open_price)]])
-# high_price = np.array([open_price[1:len(high_price)]])
-# low_price = np.array([open_price[1:len(low_price)]])
-# volume = np.array([open_price[1:len(volume)]])
-# chg = np.array([open_price[1:len(chg)]])
-
 # 数据标准化
-temp = np.array(close_price[1:len(close_price)])
-print(np.shape(temp))
-# print(np.shape(temp.reshape(-1, 1)))
 Stand = StandardScaler()
-close_price_normal = Stand.fit_transform(temp.reshape(-1, 1)).T
+def normalize(data):
+    data = np.array(data[1:len(data)])
+    data = np.array(data)
+    data = Stand.fit_transform(data.reshape(-1, 1)).T
+    return data
+close_price_normal = normalize(close_price)
+open_price_normal = normalize(open_price)
+high_price_normal = normalize(high_price)
+low_price_normal = normalize(low_price)
+volume_normal = normalize(volume)
+chg_normal = normalize(chg)
 
 # 变量加载函数
 def load_variable(filename):
@@ -47,12 +58,11 @@ IImfs = load_variable(r"C:\Users\31269\Desktop\毕设\variable\IImfs.txt")
 # print(np.shape(IImfs))
 low_f = IImfs[11] + IImfs[12] + IImfs[13] + IImfs[14] + IImfs[15]
 # print(open_price)
-print(low_f)
 
-# print(np.shape(open_price))
-# print(np.shape(low_f))
-# all_data = np.concatenate((low_f, open_price, high_price, low_price, volume, chg), axis=1)
-# print(np.shape(all_data))
+print(np.shape(open_price))
+print(low_f.reshape(-1, 1).T)
+all_data = np.concatenate((low_f.reshape(-1, 1).T, open_price_normal, high_price_normal, low_price_normal, volume_normal, chg_normal), axis=0)
+print(np.shape(all_data))
 
 #  绘图
 fig, ax = plt.subplots()
@@ -60,42 +70,49 @@ ax.plot(np.arange(len(close_price_normal[0])), close_price_normal.T, label='orig
 ax.plot(np.arange(len(low_f)), low_f, label='low_f')
 ax.set_xlabel('x label')
 ax.set_ylabel('y label')
-ax.set_title('IImfs分解后低频与原始信号对比')  # 设置图名为Simple Plot
+ax.set_title('IImfs分解后低频与原始信号对比')  # 设置图名
 ax.legend()  # 自动检测要在图例中显示的元素，并且显示
 plt.show()
 
 
 # LSTM部分开始
 # 根据原始数据集构建矩阵
-def create_dataset(data, time_steps):
+def create_dataset(data, time_steps, true_y):
     dataX, dataY = [], []
-    for i in range(len(data) - time_steps):
-        a = data[i:(i + time_steps)]
+    # print("此时的inputshape：{}".format(len(data[1])))
+    for i in range(len(data[1]) - time_steps):
+        a = data[:, i:(i + time_steps)]
         dataX.append(a)
-        dataY.append(data[i + time_steps])
+        dataY.append(true_y[0, i + time_steps])
     return np.array(dataX), np.array(dataY)
 
 # 切割为训练集和测试集
+# print(len(low_f))
 train_size = int(len(low_f) * 0.9)
 test_size = len(low_f) - train_size
-train, test = low_f[0:train_size], low_f[train_size:len(low_f)]
-time_steps = 6
-trainX, trainY = create_dataset(train, time_steps)
-testX, testY = create_dataset(test, time_steps)
+train, test = all_data[:, 0:train_size], all_data[:, train_size:len(low_f)]
+# print(np.shape(close_price_normal))
+train_y = close_price_normal[:, 0:train_size]
+test_y = close_price_normal[:, train_size:len(low_f)]
+time_steps = 30
+trainX, trainY = create_dataset(train, time_steps, train_y)
+testX, testY = create_dataset(test, time_steps, test_y)
+
 
 # reshape输入模型数据的格式为：[samples, time steps, features]
-trainX = np.reshape(trainX, (trainX.shape[0], trainX.shape[1], 1))
-testX = np.reshape(testX, (testX.shape[0], testX.shape[1], 1))
+print(np.shape(trainX))
+trainX = np.reshape(trainX, (trainX.shape[0], trainX.shape[2], 6))
+testX = np.reshape(testX, (testX.shape[0], testX.shape[2], 6))
 
 # LSTM模型构建
 model = Sequential()
-model.add(LSTM(128, input_shape=(time_steps, 1)))
+model.add(LSTM(128, input_shape=(time_steps, 6)))
 model.add(Dropout(0.2))
 model.add(Dense(1))
-adam = optimizers.Adam(lr=0.0001, decay=1e-6)  # decay是学习率衰减
-model.compile(loss='mean_squared_error', optimizer='adam', metrics=['binary_accuracy'])
+adam = optimizers.Adam(lr=0.001)  # decay是学习率衰减
+model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
 model.summary()
-history = model.fit(trainX, trainY, epochs=64, batch_size=128, verbose=1)
+history = model.fit(trainX, trainY, epochs=20, batch_size=128, verbose=1)
 score = model.evaluate(testX, testY, batch_size=64, verbose=1)
 
 # loss曲线绘制
@@ -115,16 +132,16 @@ visualize_loss(history, "Training Loss")
 trainPredict = model.predict(trainX)
 testPredict = model.predict(testX)
 
-# 对预测结果进行反归一化处理
-trainPredict = Stand.inverse_transform(trainPredict)
-trainY = Stand.inverse_transform([trainY])
-testPredict = Stand.inverse_transform(testPredict)
-testY = Stand.inverse_transform([testY])
+# # 对预测结果进行反归一化处理
+# trainPredict = Stand.inverse_transform(trainPredict)
+# trainY = Stand.inverse_transform([trainY])
+# testPredict = Stand.inverse_transform(testPredict)
+# testY = Stand.inverse_transform([testY])
 
 # 计算训练集与测试集的RMSE
-trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:]))
+trainScore = math.sqrt(mean_squared_error(trainY, trainPredict[:]))
 print('Train Score: %.2f RMSE' % (trainScore))
-testScore = math.sqrt(mean_squared_error(testY[0], testPredict[:]))
+testScore = math.sqrt(mean_squared_error(testY, testPredict[:]))
 print('Test Score: %.2f RMSE' % (testScore))
 
 # 绘制预测结果图
@@ -148,7 +165,7 @@ testPredictPlot[:] = np.nan
 testPredictPlot[len(trainPredict) + (time_steps * 2)-1:len(low_f) - 1] = test_predict
 
 
-plt.plot(Stand.inverse_transform(low_f.reshape(-1, 1)), color='green')
+plt.plot(low_f, color='green')
 plt.plot(trainPredictPlot, color='red')
 plt.plot(testPredictPlot, color='blue')
 plt.show()
