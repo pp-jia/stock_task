@@ -28,8 +28,8 @@ print(np.shape(close_price_normal))
 print(type(close_price_normal))
 
 #  绘图
-plt.plot(np.arange(len(close_price_normal)), close_price_normal)
-# plt.show()
+plt.plot(np.arange(len(close_price_normal[0])), close_price_normal[0])
+plt.show()
 
 # tips：记得设置全局变量 IImfs=[]
 IImfs = []

@@ -9,9 +9,13 @@ import warnings
 from keras import optimizers
 from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential
-from keras.layers import Dense
+from keras.layers import Dense, GRU
 from keras.layers import LSTM, Dropout
 from sklearn.metrics import mean_squared_error
+# 防止绘制出来的图标题/图例 显示中文异常
+from pylab import mpl
+mpl.rcParams['font.sans-serif'] = ['KaiTi']
+mpl.rcParams['axes.unicode_minus'] = False
 warnings.filterwarnings('ignore')
 
 #  导入开盘价、最高价、最低价、换手率、成交量等数据
@@ -57,6 +61,7 @@ def load_variable(filename):
 IImfs = load_variable(r"C:\Users\31269\Desktop\毕设\variable\IImfs.txt")
 # print(np.shape(IImfs))
 low_f = IImfs[11] + IImfs[12] + IImfs[13] + IImfs[14] + IImfs[15]
+# low_f = IImfs[5] + IImfs[6] + IImfs[7] + IImfs[8] + IImfs[9] + IImfs[10]
 # print(open_price)
 
 print(np.shape(open_price))
@@ -67,10 +72,10 @@ print(np.shape(all_data))
 #  绘图
 fig, ax = plt.subplots()
 ax.plot(np.arange(len(close_price_normal[0])), close_price_normal.T, label='original')
-ax.plot(np.arange(len(low_f)), low_f, label='low_f')
+ax.plot(np.arange(len(low_f)), low_f, label='middle_f')
 ax.set_xlabel('x label')
 ax.set_ylabel('y label')
-ax.set_title('IImfs分解后低频与原始信号对比')  # 设置图名
+ax.set_title('IImfs分解后中频与原始信号对比')  # 设置图名
 ax.legend()  # 自动检测要在图例中显示的元素，并且显示
 plt.show()
 
@@ -106,7 +111,8 @@ testX = np.reshape(testX, (testX.shape[0], testX.shape[2], 6))
 
 # LSTM模型构建
 model = Sequential()
-model.add(LSTM(128, input_shape=(time_steps, 6)))
+# model.add()
+model.add(GRU(128, input_shape=(time_steps, 6)))
 model.add(Dropout(0.2))
 model.add(Dense(1))
 adam = optimizers.Adam(lr=0.001)  # decay是学习率衰减
@@ -177,5 +183,5 @@ def save_variable(v, filename):
     f.close()
     return filename
 # 保存变量
-filename_1 = save_variable(train_predict, r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
-filename_2 = save_variable(test_predict, r"C:\Users\31269\Desktop\毕设\variable\test_predict.txt")
+# filename_1 = save_variable(train_predict, r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
+filename_2 = save_variable(test_predict, r"C:\Users\31269\Desktop\毕设\variable\GRU_test_predict.txt")

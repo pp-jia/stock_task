@@ -31,9 +31,9 @@ with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt')
 close_price_normal = normalize(close_price)
 
 # 加载变量
-train_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
-test_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\test_predict.txt")
-print(np.shape(train_predict))
+# train_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
+test_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\lstm_lonely_test_predict.txt")
+# print(np.shape(train_predict))
 print(np.shape(test_predict))
 
 print(np.shape(close_price_normal))
@@ -59,8 +59,8 @@ test_hit_rate = hit_rate(test_true, test_predict)
 
 print(len(test_true))
 print(len(test_predict))
-plt.plot(test_true[0:100], color='red', label='real')
-plt.plot(test_predict[0:100], color='blue', label='predict')
+plt.plot(test_true[100:300], color='red', label='real')
+plt.plot(test_predict[100:300], color='blue', label='predict')
 plt.legend()
 plt.show()
 
