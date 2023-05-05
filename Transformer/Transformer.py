@@ -1,28 +1,29 @@
+#!/usr/bin/env Python
+# coding=utf-8
 # 使用transformer进行沪深300指数收盘价预测
 # 导入相关包
 import pickle
 import numpy as np
 import csv
-from keras import optimizers
 from keras.layers import LayerNormalization
 from sklearn.preprocessing import StandardScaler
-from keras import backend as K
-import pandas as pd
-import os, datetime
 import tensorflow as tf
 from tensorflow.python.keras.models import *
 from tensorflow.python.keras.layers import *
 import matplotlib.pyplot as plt
+
 # using colorblind palette
+
 plt.style.use('seaborn-v0_8-colorblind')
 import warnings
+
 warnings.filterwarnings('ignore')
 print('Tensorflow version: {}'.format(tf.__version__))
 
-# 模型参数
+# 超参数
 batch_size = 256
 seq_len = 32
-num_epochs=20
+num_epochs = 8
 d_k = 256
 d_v = 256
 n_heads = 12
@@ -50,11 +51,15 @@ with open(r"C:\Users\31269\Desktop\毕设\data\沪深300期货当月.csv", 'rt')
     chg = [row[7] for row in reader]
 # 数据标准化
 Stand = StandardScaler()
+
+
 def normalize(data):
     data = np.array(data[1:len(data)])
     data = np.array(data)
     data = Stand.fit_transform(data.reshape(-1, 1)).T
     return data
+
+
 close_price_normal = normalize(close_price)
 open_price_normal = normalize(open_price)
 high_price_normal = normalize(high_price)
@@ -62,15 +67,17 @@ low_price_normal = normalize(low_price)
 volume_normal = normalize(volume)
 chg_normal = normalize(chg)
 
+
 # 根据原始数据集构建矩阵
 def create_dataset(data, time_steps, true_y):
     dataX, dataY = [], []
-    # print("此时的inputshape：{}".format(len(data[1])))
+    # print("此时的input_shape：{}".format(len(data[1])))
     for i in range(len(data[0]) - time_steps):
         a = data[:, i:(i + time_steps)]
         dataX.append(a)
         dataY.append(true_y[0, i + time_steps])
     return np.array(dataX), np.array(dataY)
+
 
 # 变量加载函数
 def load_variable(filename):
@@ -78,6 +85,8 @@ def load_variable(filename):
     r = pickle.load(f)
     f.close()
     return r
+
+
 # 加载变量
 IImfs = load_variable(r"C:\Users\31269\Desktop\毕设\variable\IImfs.txt")
 # print(np.shape(IImfs))
@@ -96,11 +105,13 @@ train_size = int(len(low_f) * 0.7)
 val_size = int(len(low_f) * 0.2)
 test_size = int(len(low_f) * 0.1)
 
-train, val, test = all_data[:, 0:train_size], all_data[:, train_size:train_size+val_size], all_data[:, train_size+val_size:len(low_f)]
+train, val, test = all_data[:, 0:train_size], all_data[:, train_size:train_size + val_size], all_data[:,
+                                                                                             train_size + val_size:len(
+                                                                                                 low_f)]
 # print(np.shape(close_price_normal))
 y_train = close_price_normal[:, 0:train_size]
-y_val = close_price_normal[:, train_size:train_size+val_size]
-y_test = close_price_normal[:, train_size+val_size:len(low_f)]
+y_val = close_price_normal[:, train_size:train_size + val_size]
+y_test = close_price_normal[:, train_size + val_size:len(low_f)]
 
 # print(y_test)
 
@@ -113,6 +124,7 @@ print(np.shape(X_train))
 X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[2], 4))  # 修改数据输入时这里需要更改
 X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[2], 4))
 X_val = np.reshape(X_val, (X_val.shape[0], X_val.shape[2], 4))
+
 
 # Time2Vector
 class Time2Vector(Layer):
@@ -157,23 +169,34 @@ class Time2Vector(Layer):
         config.update({'seq_len': self.seq_len})
         return config
 
+
 # position enciding
-class PositionalEmbedding(Layer):
-    def __init__(self, model_size, maxlen=5000):
-        super(PositionalEmbedding, self).__init__()
-        self.maxlen=maxlen
-        self.modle_size=model_size
-    def call(self, input):
-        PE = np.zeros((self.maxlen, self.model_size))
-        for i in range(self.maxlen):
-            for j in range(self.model_size):
-                if j % 2 == 0:
-                    PE[i, j] = np.sin(i / 10000 ** (j / self.model_size))
-                else:
-                    PE[i, j] = np.cos(i / 10000 ** ((j-1) / self.model_size))
-        PE = tf.constant(PE, dtype=tf.float32)
-        output = input + PE
-        return output
+class PositionalEncoding(Layer):
+    def __init__(self):
+        super(PositionalEncoding, self).__init__()
+
+    def get_angles(self, pos, i, d_model):
+        angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
+        return pos * angle_rates
+
+    def positional_encoding(self, position, d_model):
+        angle_rads = self.get_angles(np.arange(position)[:, np.newaxis],
+                                     np.arange(d_model)[np.newaxis, :],
+                                     d_model)
+        # 将 sin 应用于数组中的偶数索引（indices）；2i
+        angle_rads[:, 0::2] = np.sin(angle_rads[:, 0::2])
+        # 将 cos 应用于数组中的奇数索引；2i+1
+        angle_rads[:, 1::2] = np.cos(angle_rads[:, 1::2])
+
+        pos_encoding = angle_rads[np.newaxis, ...]
+        return tf.cast(pos_encoding, dtype=tf.float32)  # Casts a tensor to a new type.
+
+    def build(self, input_shape):
+        self.pos_encoding = self.positional_encoding(input_shape[1], input_shape[2])
+
+    def call(self, inputs):
+        return inputs + self.pos_encoding
+
 
 # Transformer
 class SingleAttention(Layer):
@@ -212,6 +235,7 @@ class SingleAttention(Layer):
 
     #############################################################################
 
+
 class MultiAttention(Layer):
     def __init__(self, d_k, d_v, n_heads):
         super(MultiAttention, self).__init__()
@@ -234,8 +258,8 @@ class MultiAttention(Layer):
         concat_attn = tf.concat(attn, axis=-1)
         multi_linear = self.linear(concat_attn)
         return multi_linear
-
     #############################################################################
+
 
 class TransformerEncoder(Layer):
     def __init__(self, d_k, d_v, n_heads, ff_dim, dropout=0.1, **kwargs):
@@ -279,68 +303,61 @@ class TransformerEncoder(Layer):
                        'dropout_rate': self.dropout_rate})
         return config
 
+
 # 模型构建
 def create_model():
-  '''Initialize time and transformer layers'''
-  time_embedding = Time2Vector(seq_len)  # 使用了Time2Vector
-  # position_encoding=PositionalEmbedding()
-  attn_layer1 = TransformerEncoder(d_k, d_v, n_heads, ff_dim)
-  # attn_layer2 = TransformerEncoder(d_k, d_v, n_heads, ff_dim)
-  # attn_layer3 = TransformerEncoder(d_k, d_v, n_heads, ff_dim)
+    '''Initialize time and transformer layers'''
+    # time_embedding = Time2Vector(seq_len)  # 使用了Time2Vector
 
-  '''Construct model'''
-  in_seq = Input(shape=(seq_len, 4))
-  x = time_embedding(in_seq)
-  x = Concatenate(axis=-1)([in_seq, x])
+    position_encoding = PositionalEncoding()  # 使用了position_encoding
+    attn_layer1 = TransformerEncoder(d_k, d_v, n_heads, ff_dim)
+    # attn_layer2 = TransformerEncoder(d_k, d_v, n_heads, ff_dim)
+    # attn_layer3 = TransformerEncoder(d_k, d_v, n_heads, ff_dim)
 
-  # x = position_encoding(seq_len)
-  x = attn_layer1((x, x, x))
-  # x = attn_layer2((x, x, x))
-  # x = attn_layer3((x, x, x))
-  x = GlobalAveragePooling1D(data_format='channels_first')(x)
-  x = Dropout(0.1)(x)
+    '''Construct model'''
+    in_seq = Input(shape=(seq_len, 4))
+    # x = time_embedding(in_seq)
+    # x = Concatenate(axis=-1)([in_seq, x])
 
-  #decoder 部分用LSTM替代
-  x = tf.reshape(x, [-1, seq_len, 1])  # LSTM的3-D输入-->[batch_size, seq_length, input_dim]
-  x = LSTM(128, input_shape=(seq_len, 1))(x)
-  x = Dropout(0.1)(x)
-  # x = LSTM(128, return_sequences=False)(x)
-  # x = Dropout(0.1)(x)
-  x = Dense(64, activation='relu')(x)
-  x = Dropout(0.1)(x)
-  out = Dense(1)(x)
+    x = position_encoding(in_seq)
+    x = attn_layer1((x, x, x))
+    # x = attn_layer2((x, x, x))
+    # x = attn_layer3((x, x, x))
+    # x = GlobalAveragePooling1D(data_format='channels_first')(x)
+    # x = Dropout(0.1)(x)
 
-  model = Model(inputs=in_seq, outputs=out)
-  model.compile(loss='mean_squared_error', optimizer='adam', metrics=['mae','mape'])
-  return model
+    # decoder 部分用LSTM替代
+    x = tf.reshape(x, [-1, seq_len, 4])  # LSTM的3-D输入-->[batch_size, seq_length, input_dim]
+    x = LSTM(128, input_shape=(seq_len, 4))(x)
+    x = Dropout(0.1)(x)
+    # x = LSTM(128, return_sequences=False)(x)
+    # x = Dropout(0.1)(x)
+    x = Dense(64, activation='relu')(x)
+    x = Dropout(0.1)(x)
+    out = Dense(1)(x)
+
+    model = Model(inputs=in_seq, outputs=out)
+    model.compile(loss='mean_squared_error', optimizer='adam', metrics=['mae', 'mape'])
+    return model
+
 
 model = create_model()
 model.summary()
-callback = tf.keras.callbacks.ModelCheckpoint('Transformer+TimeEmbedding.hdf5',
-                                              monitor='val_loss',
-                                              save_best_only=True, verbose=1)
+
 history = model.fit(X_train, y_train,
                     batch_size=batch_size,
                     epochs=num_epochs,
                     # steps_per_epoch=len(X_train)/batch_size,
-                    callbacks=[callback],
                     validation_data=(X_val, y_val))
-
-# model = tf.keras.models.load_model('C:\\Users\\31269\\PycharmProjects\\pythonProject\\Transformer+TimeEmbedding.hdf5',
-#                                    custom_objects={'Time2Vector': Time2Vector,
-#                                                    'SingleAttention': SingleAttention,
-#                                                    'MultiAttention': MultiAttention,
-#                                                    'TransformerEncoder': TransformerEncoder})
-# model.compile(loss='mse', optimizer='adam', metrics=['mae', 'mape'])
-
 
 ###############################################################################
 '''Calculate predictions and metrics'''
 
-#Calculate predication for training, validation and test data
+# Calculate predication for training, validation and test data
 train_pred = model.predict(X_train)
 val_pred = model.predict(X_val)
 test_pred = model.predict(X_test)
+
 
 # 变量保存函数
 def save_variable(v, filename):
@@ -348,17 +365,35 @@ def save_variable(v, filename):
     pickle.dump(v, f)
     f.close()
     return filename
+
+
 # 保存变量
 filename_1 = save_variable(test_pred, r"C:\Users\31269\Desktop\毕设\variable\transformer_test_pred.txt")
 
-#Print evaluation metrics for all datasets
+# loss曲线绘制
+def visualize_loss(history, title):
+    loss = history.history["loss"]
+    val_loss = history.history["val_loss"]
+    epochs = range(len(loss))
+    plt.figure()
+    plt.plot(epochs, loss, "b", label="Training loss")
+    plt.plot(epochs, val_loss, "r", label="validation loss")
+    plt.title(title)
+    plt.xlabel("Epochs")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.show()
+visualize_loss(history, "Loss")
+
+
+# Print evaluation metrics for all datasets
 train_eval = model.evaluate(X_train, y_train, verbose=0)
 val_eval = model.evaluate(X_val, y_val, verbose=0)
 test_eval = model.evaluate(X_test, y_test, verbose=0)
 print(' ')
 print('Evaluation metrics')
-print('Training Data - Loss: {:.4f}, MSE: {:.4f}, MAPE: {:.4f}'.format(train_eval[0], train_eval[1], train_eval[2]))
-print('Validation Data - Loss: {:.4f}, MSE: {:.4f}, MAPE: {:.4f}'.format(val_eval[0], val_eval[1], val_eval[2]))
-print('Test Data - Loss: {:.4f}, MSE: {:.4f}, MAPE: {:.4f}'.format(test_eval[0], test_eval[1], test_eval[2]))
+print('Training Data - Loss: {:.4f}, MAE: {:.4f}, MAPE: {:.4f}'.format(train_eval[0], train_eval[1], train_eval[2]))
+print('Validation Data - Loss: {:.4f}, MAE: {:.4f}, MAPE: {:.4f}'.format(val_eval[0], val_eval[1], val_eval[2]))
+print('Test Data - Loss: {:.4f}, MAE: {:.4f}, MAPE: {:.4f}'.format(test_eval[0], test_eval[1], test_eval[2]))
 
 ###############################################################################

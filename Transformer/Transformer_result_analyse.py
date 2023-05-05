@@ -36,7 +36,7 @@ print(np.shape(test_predict))
 
 print(np.shape(close_price_normal))
 print(len(low_f))
-test_true = close_price_normal[0, 30 + int(len(low_f) * 0.7) + int(len(low_f) * 0.2)-1:len(low_f)-1]
+test_true = close_price_normal[0, 32 + int(len(low_f) * 0.7) + int(len(low_f) * 0.2)-1:len(low_f)-1]
 print(np.shape(test_true))
 
 print(test_true)
@@ -45,10 +45,10 @@ def hit_rate(true, predict):
     DS_sum = 0
     print(len(true))
     print(len(predict))
-    for i in range(len(predict)-1):
+    for i in range(len(true)-1):
         # print((predict[i+1]-predict[i]) * (true[i+1]-true[i]))
         print("------")
-        print(predict[i+1])
+        # print(predict[i+1])
         print("------")
         # print(true[i+1])
         if ((predict[i+1]-predict[i]) * (true[i+1]-true[i])) >= 0:
@@ -64,8 +64,8 @@ test_hit_rate = hit_rate(test_true, test_predict)
 
 print(len(test_true))
 print(len(test_predict))
-plt.plot(test_true[0:len(test_predict)], color='red', label='real')
-plt.plot(test_predict[0:len(test_predict)], color='blue', label='predict')
+plt.plot(test_true[0:3000], color='red', label='real')
+plt.plot(test_predict[0:3000], color='blue', label='predict')
 plt.legend()
 plt.show()
 

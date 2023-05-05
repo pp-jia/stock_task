@@ -185,5 +185,5 @@ def save_variable(v, filename):
     f.close()
     return filename
 # 保存变量
-filename_1 = save_variable(train_predict, r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
+# filename_1 = save_variable(train_predict, r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
 filename_2 = save_variable(test_predict, r"C:\Users\31269\Desktop\毕设\variable\test_predict.txt")

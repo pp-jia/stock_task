@@ -32,14 +32,14 @@ close_price_normal = normalize(close_price)
 
 # 加载变量
 # train_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
-test_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\lstm_lonely_test_predict.txt")
+test_predict = load_variable(r"C:\Users\31269\Desktop\毕设\variable\Bi_lstm_lonely_test_predict_2.txt")
 # print(np.shape(train_predict))
 print(np.shape(test_predict))
 
 print(np.shape(close_price_normal))
-train_true = close_price_normal[0, 30:158310+30]
+# train_true = close_price_normal[0, 30:158310+30]
 test_true = close_price_normal[0, 158310 + 30 * 2 - 1:len(low_f)-1]
-print(np.shape(train_true))
+# print(np.shape(train_true))
 print(np.shape(test_true))
 
 def hit_rate(true, predict):
@@ -59,10 +59,9 @@ test_hit_rate = hit_rate(test_true, test_predict)
 
 print(len(test_true))
 print(len(test_predict))
-plt.plot(test_true[100:300], color='red', label='real')
-plt.plot(test_predict[100:300], color='blue', label='predict')
+plt.plot(test_true[0:1250], color='red', label='real')
+plt.plot(test_predict[0:1250], color='blue', label='predict')
 plt.legend()
 plt.show()
 
 print(test_hit_rate)
-

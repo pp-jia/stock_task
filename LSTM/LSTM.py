@@ -9,8 +9,7 @@ import warnings
 from keras import optimizers
 from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import LSTM, Dropout
+from keras.layers import LSTM, Dropout, Bidirectional, Dense
 from sklearn.metrics import mean_squared_error
 # 防止绘制出来的图标题/图例 显示中文异常
 from pylab import mpl
@@ -112,27 +111,33 @@ testX = np.reshape(testX, (testX.shape[0], testX.shape[2], 6))
 # LSTM模型构建
 model = Sequential()
 # model.add()
-model.add(LSTM(128, input_shape=(time_steps, 6)))
+model.add(Bidirectional(LSTM(128, return_sequences=True), input_shape=(time_steps, 6)))
+model.add(Dropout(0.2))
+model.add(Bidirectional(LSTM(64, return_sequences=True)))
+model.add(Dropout(0.2))
+model.add(Bidirectional(LSTM(32, return_sequences=False)))
 model.add(Dropout(0.2))
 model.add(Dense(1))
 adam = optimizers.Adam(lr=0.001)  # decay是学习率衰减
 model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
 model.summary()
-history = model.fit(trainX, trainY, epochs=20, batch_size=128, verbose=1)
-score = model.evaluate(testX, testY, batch_size=64, verbose=1)
+history = model.fit(trainX, trainY, epochs=20, batch_size=512, verbose=1)
+score = model.evaluate(testX, testY, batch_size=256, verbose=1)
 
 # loss曲线绘制
 def visualize_loss(history, title):
     loss = history.history["loss"]
+    val_loss = history.history["val_loss"]
     epochs = range(len(loss))
     plt.figure()
     plt.plot(epochs, loss, "b", label="Training loss")
+    plt.plot(epochs, val_loss, "r", label="validation loss")
     plt.title(title)
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.legend()
     plt.show()
-visualize_loss(history, "Training Loss")
+visualize_loss(history, "Loss")
 
 # 预测训练集与测试集
 trainPredict = model.predict(trainX)
@@ -184,4 +189,4 @@ def save_variable(v, filename):
     return filename
 # 保存变量
 # filename_1 = save_variable(train_predict, r"C:\Users\31269\Desktop\毕设\variable\train_predict.txt")
-filename_2 = save_variable(test_predict, r"C:\Users\31269\Desktop\毕设\variable\lstm_lonely_test_predict.txt")
+filename_2 = save_variable(test_predict, r"C:\Users\31269\Desktop\毕设\variable\Bi_lstm_lonely_test_predict_2.txt")
